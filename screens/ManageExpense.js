@@ -1,12 +1,14 @@
 import { useContext, useLayoutEffect, useState } from "react";
+// 1. DÜZELTME: "Keyboard" ve "TouchableWithoutFeedback" araçlarını alet çantamıza ekledik
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   Pressable,
-  Platform,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
@@ -103,98 +105,103 @@ function ManageExpense({ route, navigation }) {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>Tutar</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="decimal-pad"
-          onChangeText={setAmountValue}
-          value={amountValue}
-          placeholder="Örn: 19.99"
-        />
+    // 2. DÜZELTME: Ekranın tamamını görünmez dokunmatik alanla sardık ve boşluğa tıklanınca klavyeyi kapat dedik
+    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+      <View style={styles.container}>
+        <View style={styles.formContainer}>
+          <Text style={styles.label}>Tutar</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="decimal-pad"
+            onChangeText={setAmountValue}
+            value={amountValue}
+            placeholder="Örn: 19.99"
+          />
 
-        <Text style={styles.label}>Tarih</Text>
-        <Pressable onPress={() => setIsDatePickerShow(true)}>
-          <View pointerEvents="none">
-            <TextInput
-              style={styles.input}
-              value={dateValue.toISOString().slice(0, 10)}
-              editable={false}
+          <Text style={styles.label}>Tarih</Text>
+          <Pressable onPress={() => setIsDatePickerShow(true)}>
+            <View pointerEvents="none">
+              <TextInput
+                style={styles.input}
+                value={dateValue.toISOString().slice(0, 10)}
+                editable={false}
+              />
+            </View>
+          </Pressable>
+
+          {isDatePickerShow && (
+            <DateTimePicker
+              value={dateValue}
+              mode="date"
+              display="default"
+              onChange={dateChangeHandler}
+            />
+          )}
+
+          <Text style={styles.label}>Kategori</Text>
+          <View style={styles.categoriesContainer}>
+            {CATEGORIES.map((cat) => {
+              const isSelected = categoryValue === cat.id;
+              return (
+                <Pressable
+                  key={cat.id}
+                  style={[
+                    styles.categoryButton,
+                    isSelected && styles.categoryButtonSelected,
+                  ]}
+                  onPress={() => setCategoryValue(cat.id)}
+                >
+                  <Ionicons
+                    name={cat.icon}
+                    size={24}
+                    color={
+                      isSelected ? "white" : GlobalStyles.colors.primary500
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      isSelected && styles.categoryTextSelected,
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.label}>Açıklama</Text>
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            multiline={true}
+            onChangeText={setDescriptionValue}
+            value={descriptionValue}
+            placeholder="Harcama detayını yazın..."
+          />
+        </View>
+
+        <View style={styles.buttons}>
+          <Button style={styles.button} mode="flat" onPress={cancelHandler}>
+            İptal
+          </Button>
+          <Button style={styles.button} onPress={confirmHandler}>
+            {isEditing ? "Güncelle" : "Ekle"}
+          </Button>
+        </View>
+
+        {isEditing && (
+          <View style={styles.deleteContainer}>
+            <IconButton
+              icon="trash"
+              color={GlobalStyles.colors.error500}
+              size={32}
+              onPress={deleteExpenseHandler}
             />
           </View>
-        </Pressable>
-
-        {isDatePickerShow && (
-          <DateTimePicker
-            value={dateValue}
-            mode="date"
-            display="default"
-            onChange={dateChangeHandler}
-          />
         )}
-
-        <Text style={styles.label}>Kategori</Text>
-        <View style={styles.categoriesContainer}>
-          {CATEGORIES.map((cat) => {
-            const isSelected = categoryValue === cat.id;
-            return (
-              <Pressable
-                key={cat.id}
-                style={[
-                  styles.categoryButton,
-                  isSelected && styles.categoryButtonSelected,
-                ]}
-                onPress={() => setCategoryValue(cat.id)}
-              >
-                <Ionicons
-                  name={cat.icon}
-                  size={24}
-                  color={isSelected ? "white" : GlobalStyles.colors.primary500}
-                />
-                <Text
-                  style={[
-                    styles.categoryText,
-                    isSelected && styles.categoryTextSelected,
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <Text style={styles.label}>Açıklama</Text>
-        <TextInput
-          style={[styles.input, styles.inputMultiline]}
-          multiline={true}
-          onChangeText={setDescriptionValue}
-          value={descriptionValue}
-          placeholder="Harcama detayını yazın..."
-        />
       </View>
-
-      <View style={styles.buttons}>
-        <Button style={styles.button} mode="flat" onPress={cancelHandler}>
-          İptal
-        </Button>
-        <Button style={styles.button} onPress={confirmHandler}>
-          {isEditing ? "Güncelle" : "Ekle"}
-        </Button>
-      </View>
-
-      {isEditing && (
-        <View style={styles.deleteContainer}>
-          <IconButton
-            icon="trash"
-            color={GlobalStyles.colors.error500}
-            size={32}
-            onPress={deleteExpenseHandler}
-          />
-        </View>
-      )}
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
