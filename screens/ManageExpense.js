@@ -1,12 +1,10 @@
 import { useContext, useLayoutEffect, useState } from "react";
-// 1. DÜZELTME: "Keyboard" ve "TouchableWithoutFeedback" araçlarını alet çantamıza ekledik
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   Pressable,
-  Alert,
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
@@ -16,6 +14,11 @@ import IconButton from "../components/UI/IconButton";
 import { GlobalStyles } from "../constants/styles";
 import Button from "../components/UI/Button";
 import { ExpensesContext } from "../store/expenses-context";
+import { storeExpense, updateExpense, deleteExpense } from "../util/http";
+
+// YENİ EKLENDİ: Şık bileşenlerimizi çağırıyoruz
+import LoadingOverlay from "../components/UI/LoadingOverlay";
+import ErrorOverlay from "../components/UI/ErrorOverlay";
 
 const CATEGORIES = [
   { id: "yemek", label: "Yemek", icon: "fast-food" },
@@ -26,12 +29,10 @@ const CATEGORIES = [
 
 function ManageExpense({ route, navigation }) {
   const expensesCtx = useContext(ExpensesContext);
-
   const editedExpenseId = route.params?.expenseId;
   const isEditing = !!editedExpenseId;
-
   const selectedExpense = expensesCtx.expenses.find(
-    (expense) => expense.id === editedExpenseId
+    (e) => e.id === editedExpenseId
   );
 
   const [amountValue, setAmountValue] = useState(
@@ -43,7 +44,6 @@ function ManageExpense({ route, navigation }) {
   const [descriptionValue, setDescriptionValue] = useState(
     selectedExpense ? selectedExpense.description : ""
   );
-
   const [categoryValue, setCategoryValue] = useState(
     selectedExpense && selectedExpense.category
       ? selectedExpense.category
@@ -51,6 +51,8 @@ function ManageExpense({ route, navigation }) {
   );
 
   const [isDatePickerShow, setIsDatePickerShow] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -58,9 +60,16 @@ function ManageExpense({ route, navigation }) {
     });
   }, [navigation, isEditing]);
 
-  function deleteExpenseHandler() {
-    expensesCtx.deleteExpense(editedExpenseId);
-    navigation.goBack();
+  async function deleteExpenseHandler() {
+    setIsSubmitting(true);
+    try {
+      await deleteExpense(editedExpenseId);
+      expensesCtx.deleteExpense(editedExpenseId);
+      navigation.goBack();
+    } catch (error) {
+      setError("Gider silinemedi. Lütfen tekrar deneyin.");
+      setIsSubmitting(false);
+    }
   }
 
   function cancelHandler() {
@@ -74,18 +83,15 @@ function ManageExpense({ route, navigation }) {
     }
   }
 
-  function confirmHandler() {
+  async function confirmHandler() {
     const expenseAmount = +amountValue;
     const expenseDescription = descriptionValue.trim();
 
-    const amountIsValid = !isNaN(expenseAmount) && expenseAmount > 0;
-    const descriptionIsValid = expenseDescription.length > 0;
-
-    if (!amountIsValid || !descriptionIsValid) {
-      Alert.alert(
-        "Geçersiz Giriş!",
-        "Lütfen tutarın 0'dan büyük olduğundan ve açıklamayı boş bırakmadığınızdan emin olun."
-      );
+    if (
+      isNaN(expenseAmount) ||
+      expenseAmount <= 0 ||
+      expenseDescription.length === 0
+    ) {
       return;
     }
 
@@ -96,17 +102,38 @@ function ManageExpense({ route, navigation }) {
       category: categoryValue,
     };
 
-    if (isEditing) {
-      expensesCtx.updateExpense(editedExpenseId, expenseData);
-    } else {
-      expensesCtx.addExpense(expenseData);
+    setIsSubmitting(true);
+    try {
+      if (isEditing) {
+        await updateExpense(editedExpenseId, expenseData);
+        expensesCtx.updateExpense(editedExpenseId, expenseData);
+      } else {
+        const id = await storeExpense(expenseData);
+        expensesCtx.addExpense({ ...expenseData, id: id });
+      }
+      navigation.goBack();
+    } catch (error) {
+      setError("Veriler kaydedilemedi. Lütfen tekrar deneyin.");
+      setIsSubmitting(false);
     }
-    navigation.goBack();
   }
 
+  function errorHandler() {
+    setError(null);
+  }
+
+  if (error && !isSubmitting) {
+    return <ErrorOverlay message={error} onConfirm={errorHandler} />;
+  }
+
+  if (isSubmitting) {
+    return <LoadingOverlay />;
+  }
+
+  // --- DÜZELTİLEN KISIM BURASI ---
   return (
-    // 2. DÜZELTME: Ekranın tamamını görünmez dokunmatik alanla sardık ve boşluğa tıklanınca klavyeyi kapat dedik
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+      {/* 1. DİKKAT: TouchableWithoutFeedback'in içinde TEK BİR ana View var */}
       <View style={styles.container}>
         <View style={styles.formContainer}>
           <Text style={styles.label}>Tutar</Text>

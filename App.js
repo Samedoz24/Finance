@@ -63,7 +63,7 @@ function ExpensesOverview({ navigation }) {
         }}
       />
       <BottomTabs.Screen
-        name="TümMasraflar"
+        name="Tüm Masraflar"
         component={AllExpenses}
         options={{
           title: "Tüm Masraflar",

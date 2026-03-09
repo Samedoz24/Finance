@@ -4,16 +4,26 @@ const DUMMY_EXPENSES = [];
 
 export const ExpensesContext = createContext({
   expenses: [],
-  addExpense: ({ description, amount, date }) => {},
+  addExpense: ({ description, amount, date, category }) => {},
+  // YENİ EKLENDİ: Firebase'den gelen verileri tek seferde Context'e basmak için
+  setExpenses: (expenses) => {},
   deleteExpense: (id) => {},
-  updateExpense: (id, { description, amount, date }) => {},
+  updateExpense: (id, { description, amount, date, category }) => {},
 });
 
 function expensesReducer(state, action) {
   switch (action.type) {
     case "ADD":
-      const id = new Date().toString() + Math.random().toString();
+      // DEĞİŞTİRİLDİ: Eğer payload'ın içinde id varsa onu kullan (Firebase id'si), yoksa rastgele üret
+      const id =
+        action.payload.id || new Date().toString() + Math.random().toString();
       return [{ ...action.payload, id: id }, ...state];
+
+    // YENİ EKLENDİ: Verileri ters çevirip state'e yazıyoruz (En yeni harcama en üstte görünsün diye)
+    case "SET":
+      const inverted = action.payload.reverse();
+      return inverted;
+
     case "UPDATE":
       const updatableExpenseIndex = state.findIndex(
         (expense) => expense.id === action.payload.id
@@ -23,8 +33,10 @@ function expensesReducer(state, action) {
       const updatedExpenses = [...state];
       updatedExpenses[updatableExpenseIndex] = updatedItem;
       return updatedExpenses;
+
     case "DELETE":
       return state.filter((expense) => expense.id !== action.payload);
+
     default:
       return state;
   }
@@ -35,6 +47,11 @@ function ExpensesContextProvider({ children }) {
 
   function addExpense(expenseData) {
     dispatch({ type: "ADD", payload: expenseData });
+  }
+
+  // YENİ EKLENDİ: setExpenses Fonksiyonu
+  function setExpenses(expenses) {
+    dispatch({ type: "SET", payload: expenses });
   }
 
   function deleteExpense(id) {
@@ -48,6 +65,7 @@ function ExpensesContextProvider({ children }) {
   const value = {
     expenses: expensesState,
     addExpense: addExpense,
+    setExpenses: setExpenses, // YENİ EKLENDİ: Provider'a dahil ettik
     deleteExpense: deleteExpense,
     updateExpense: updateExpense,
   };
