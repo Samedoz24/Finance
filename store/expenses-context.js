@@ -1,29 +1,20 @@
 import { createContext, useReducer } from "react";
 
-const DUMMY_EXPENSES = [];
-
 export const ExpensesContext = createContext({
   expenses: [],
   addExpense: ({ description, amount, date, category }) => {},
-  // YENİ EKLENDİ: Firebase'den gelen verileri tek seferde Context'e basmak için
   setExpenses: (expenses) => {},
   deleteExpense: (id) => {},
   updateExpense: (id, { description, amount, date, category }) => {},
+  clearAllExpenses: () => {}, // YENİ: Dışarıdan erişilebilir fonksiyonumuz
 });
 
 function expensesReducer(state, action) {
   switch (action.type) {
     case "ADD":
-      // DEĞİŞTİRİLDİ: Eğer payload'ın içinde id varsa onu kullan (Firebase id'si), yoksa rastgele üret
-      const id =
-        action.payload.id || new Date().toString() + Math.random().toString();
-      return [{ ...action.payload, id: id }, ...state];
-
-    // YENİ EKLENDİ: Verileri ters çevirip state'e yazıyoruz (En yeni harcama en üstte görünsün diye)
+      return [action.payload, ...state];
     case "SET":
-      const inverted = action.payload.reverse();
-      return inverted;
-
+      return action.payload.reverse();
     case "UPDATE":
       const updatableExpenseIndex = state.findIndex(
         (expense) => expense.id === action.payload.id
@@ -33,23 +24,22 @@ function expensesReducer(state, action) {
       const updatedExpenses = [...state];
       updatedExpenses[updatableExpenseIndex] = updatedItem;
       return updatedExpenses;
-
     case "DELETE":
       return state.filter((expense) => expense.id !== action.payload);
-
+    case "CLEAR_ALL": // YENİ: Kasayı tamamen boşaltan komut
+      return [];
     default:
       return state;
   }
 }
 
 function ExpensesContextProvider({ children }) {
-  const [expensesState, dispatch] = useReducer(expensesReducer, DUMMY_EXPENSES);
+  const [expensesState, dispatch] = useReducer(expensesReducer, []);
 
   function addExpense(expenseData) {
     dispatch({ type: "ADD", payload: expenseData });
   }
 
-  // YENİ EKLENDİ: setExpenses Fonksiyonu
   function setExpenses(expenses) {
     dispatch({ type: "SET", payload: expenses });
   }
@@ -62,12 +52,19 @@ function ExpensesContextProvider({ children }) {
     dispatch({ type: "UPDATE", payload: { id: id, data: expenseData } });
   }
 
+  // YENİ: Kasayı boşaltma işlemini tetikleyen fonksiyon
+  function clearAllExpenses() {
+    dispatch({ type: "CLEAR_ALL" });
+  }
+
+  // Fonksiyonları dışarıya paketliyoruz
   const value = {
     expenses: expensesState,
     addExpense: addExpense,
-    setExpenses: setExpenses, // YENİ EKLENDİ: Provider'a dahil ettik
+    setExpenses: setExpenses,
     deleteExpense: deleteExpense,
     updateExpense: updateExpense,
+    clearAllExpenses: clearAllExpenses, // YENİ: Paketin içine koyduk!
   };
 
   return (

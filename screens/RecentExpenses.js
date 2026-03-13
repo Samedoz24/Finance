@@ -6,25 +6,27 @@ import { ExpensesContext } from "../store/expenses-context";
 import { getDateMinusDay } from "../util/date";
 import { fetchExpenses } from "../util/http";
 
-// YENİ EKLENDİ: Kendi yaptığımız şık bileşenleri çağırıyoruz
 import LoadingOverlay from "../components/UI/LoadingOverlay";
 import ErrorOverlay from "../components/UI/ErrorOverlay";
+
+// YENİ EKLENDİ: Kimlik kasamızı içeri alıyoruz
+import { AuthContext } from "../store/auth-context";
 
 function RecentExpenses() {
   const expensesCtx = useContext(ExpensesContext);
   const [isFetching, setIsFetching] = useState(true);
-
-  // YENİ EKLENDİ: Hata durumunu tutacağımız state
   const [error, setError] = useState();
 
+  // YENİ EKLENDİ: Kasayı kullanıma açıyoruz
+  const authCtx = useContext(AuthContext);
   useEffect(() => {
     async function getExpenses() {
       setIsFetching(true);
       try {
-        const expenses = await fetchExpenses();
+        // DEĞİŞTİ: Artık token'ın yanına authCtx.uid de ekledik!
+        const expenses = await fetchExpenses(authCtx.token, authCtx.uid);
         expensesCtx.setExpenses(expenses);
       } catch (error) {
-        // HATA YAKALANDI: State'e hata mesajımızı yazıyoruz
         setError(
           "Giderler yüklenemedi. Lütfen internet bağlantınızı kontrol edin."
         );
@@ -33,24 +35,20 @@ function RecentExpenses() {
     }
 
     getExpenses();
-  }, []);
+  }, [authCtx.token, authCtx.uid]); // uid'yi de takibe aldık
 
-  // YENİ EKLENDİ: Kullanıcı hatayı okuyup "Tamam"a basınca hatayı ekrandan silen fonksiyon
   function errorHandler() {
     setError(null);
   }
 
-  // KOŞUL 1: Eğer bir hata varsa, sadece Hata Ekranını göster ve dur!
   if (error && !isFetching) {
     return <ErrorOverlay message={error} onConfirm={errorHandler} />;
   }
 
-  // KOŞUL 2: Eğer veriler hala yükleniyorsa, sadece Yükleme Ekranını göster ve dur!
   if (isFetching) {
     return <LoadingOverlay />;
   }
 
-  // KOŞUL 3: Her şey yolundaysa normal listeyi göster
   const recentExpenses = expensesCtx.expenses.filter((expense) => {
     const today = new Date();
     const date7DaysAgo = getDateMinusDay(today, 7);

@@ -3,7 +3,9 @@ import { getFormatedDate } from "../../util/date";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useContext } from "react";
+
 import { ThemeContext } from "../../store/theme-context";
+import { AuthContext } from "../../store/auth-context"; // YENİ EKLENDİ
 
 const CATEGORY_ICONS = {
   yemek: "fast-food",
@@ -17,6 +19,10 @@ function ExpenseItem({ description, amount, date, id, category }) {
 
   const themeCtx = useContext(ThemeContext);
   const colors = themeCtx.colors;
+
+  // YENİ EKLENDİ: Kasadan para birimini çekiyoruz
+  const authCtx = useContext(AuthContext);
+  const userCurrency = authCtx.currency;
 
   function expensePressHandler() {
     navigation.navigate("ManageExpense", {
@@ -53,8 +59,9 @@ function ExpenseItem({ description, amount, date, id, category }) {
         </View>
 
         <View style={styles.amountContainer}>
+          {/* DEĞİŞTİ: Rakamın yanına para birimi eklendi */}
           <Text style={[styles.amount, { color: colors.primary }]}>
-            {amount.toFixed(2)}
+            {amount.toFixed(2)} {userCurrency}
           </Text>
         </View>
       </View>

@@ -16,9 +16,11 @@ import Button from "../components/UI/Button";
 import { ExpensesContext } from "../store/expenses-context";
 import { storeExpense, updateExpense, deleteExpense } from "../util/http";
 
-// YENİ EKLENDİ: Şık bileşenlerimizi çağırıyoruz
 import LoadingOverlay from "../components/UI/LoadingOverlay";
 import ErrorOverlay from "../components/UI/ErrorOverlay";
+
+// KASAMIZI İÇERİ ALIYORUZ
+import { AuthContext } from "../store/auth-context";
 
 const CATEGORIES = [
   { id: "yemek", label: "Yemek", icon: "fast-food" },
@@ -29,6 +31,10 @@ const CATEGORIES = [
 
 function ManageExpense({ route, navigation }) {
   const expensesCtx = useContext(ExpensesContext);
+
+  // KASAYI KULLANIMA AÇIYORUZ
+  const authCtx = useContext(AuthContext);
+
   const editedExpenseId = route.params?.expenseId;
   const isEditing = !!editedExpenseId;
   const selectedExpense = expensesCtx.expenses.find(
@@ -63,7 +69,8 @@ function ManageExpense({ route, navigation }) {
   async function deleteExpenseHandler() {
     setIsSubmitting(true);
     try {
-      await deleteExpense(editedExpenseId);
+      // SİLME İŞLEMİNE BİLET VE KİMLİK (UID) EKLENDİ
+      await deleteExpense(editedExpenseId, authCtx.token, authCtx.uid);
       expensesCtx.deleteExpense(editedExpenseId);
       navigation.goBack();
     } catch (error) {
@@ -105,10 +112,17 @@ function ManageExpense({ route, navigation }) {
     setIsSubmitting(true);
     try {
       if (isEditing) {
-        await updateExpense(editedExpenseId, expenseData);
+        // GÜNCELLEME İŞLEMİNE BİLET VE KİMLİK (UID) EKLENDİ
+        await updateExpense(
+          editedExpenseId,
+          expenseData,
+          authCtx.token,
+          authCtx.uid
+        );
         expensesCtx.updateExpense(editedExpenseId, expenseData);
       } else {
-        const id = await storeExpense(expenseData);
+        // EKLEME İŞLEMİNE BİLET VE KİMLİK (UID) EKLENDİ
+        const id = await storeExpense(expenseData, authCtx.token, authCtx.uid);
         expensesCtx.addExpense({ ...expenseData, id: id });
       }
       navigation.goBack();
@@ -130,10 +144,8 @@ function ManageExpense({ route, navigation }) {
     return <LoadingOverlay />;
   }
 
-  // --- DÜZELTİLEN KISIM BURASI ---
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-      {/* 1. DİKKAT: TouchableWithoutFeedback'in içinde TEK BİR ana View var */}
       <View style={styles.container}>
         <View style={styles.formContainer}>
           <Text style={styles.label}>Tutar</Text>
